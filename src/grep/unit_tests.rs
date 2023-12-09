@@ -2,87 +2,6 @@ use std::{path::PathBuf, collections::HashMap};
 use regex::Regex;
 use crate::{grep::{Grep, context::Context, options::Options, counters::Counters},clu_errors::CluErrors};
 
-#[test] // The execute function calls the other Grep's functions and propagates their errors. Let's test:
-// 1. A successful case if dereference recursive is not set on.
-// 2. A successful case if dereference recursive is set on. (1 and 2 also serves as tests for globbing cause it's executed here)
-// 3. Invalid command combination error
-// 4. Empty research error.
-// The other errors are inherited from the Grep's functions and are tested in their corresponding tests.
-fn execute_test(){
-    // Non dereference recursive
-    let mut pathbuf = PathBuf::new();
-    pathbuf.push(".");
-    pathbuf.push("tests");
-    pathbuf.push("grep_files");
-    pathbuf.push("*.txt");
-    let grep = Grep{
-        pattern: Box::new("grep".to_string()),
-        path: vec![pathbuf.to_str().unwrap().to_string()],
-        dereference_recursive: false,
-        ignore_case: false,
-        hidden_items: false,
-        context: Context { after_context: 0, before_context: 0, context: 0 },
-        options: Options { files_with_matches: false, line_number: true, invert_match: false, only_matching: false},
-        counters: Counters { count: false, total_count: false }
-    };
-    let executed = grep.execute().unwrap(); 
-    assert!(executed.contains("sample_text.txt")); 
-    assert!(executed.contains("3:I'm grep")); 
-
-    // Dereference recursive
-    let mut pathbuf = PathBuf::new();
-    pathbuf.push(".");
-    pathbuf.push("tests");
-    pathbuf.push("grep_files");
-    let grep = Grep{
-        pattern: Box::new("grep".to_string()),
-        path: vec![pathbuf.to_str().unwrap().to_string()],
-        dereference_recursive: true,
-        ignore_case: false,
-        hidden_items: true,
-        context: Context { after_context: 0, before_context: 0, context: 1 },
-        options: Options { files_with_matches: false, line_number: true, invert_match: false, only_matching: false},
-        counters: Counters { count: false, total_count: false }
-    };
-    let executed = grep.execute().unwrap(); // Executed contains the files identifiers where the search has been successful, we cannot ensure the order in which these results are obtained due to the concurrency of our grep, then we can just ensure that we've found what we're looking for.
-    // sample_text.txt found!
-    assert!(executed.contains("sample_text.txt")); 
-    assert!(executed.contains("2-How are you? Who are you?\n3:I'm grep\n4-Nice to meet you"));
-    // .hidden_text.txt found!
-    assert!(executed.contains(".hidden_text.txt")); 
-    assert!(executed.contains("1:I'm a hidden file created to test grep!"));
-    // sample_text2.txt found
-    assert!(executed.contains("sample_text2.txt")); 
-    assert!(executed.contains("1-I'm contained into a hidden folder.\n2:I'd like to test grep"));
-
-    // Invalid command combination error
-    let grep = Grep{
-        pattern: Box::new("grep".to_string()),
-        path: vec![pathbuf.to_str().unwrap().to_string()],
-        dereference_recursive: true,
-        ignore_case: false,
-        hidden_items: true,
-        context: Context { after_context: 0, before_context: 0, context: 1 },
-        options: Options { files_with_matches: false, line_number: true, invert_match: false, only_matching: false},
-        counters: Counters { count: true, total_count: false }
-    };
-    assert_eq!(CluErrors::InvalidCommandCombination("grep".to_string()), grep.execute().expect_err(""));
-
-    // Empty research error
-    let grep = Grep{
-        pattern: Box::new("Grep".to_string()),
-        path: vec![pathbuf.to_str().unwrap().to_string()],
-        dereference_recursive: true,
-        ignore_case: false,
-        hidden_items: true,
-        context: Context { after_context: 0, before_context: 0, context: 1 },
-        options: Options { files_with_matches: false, line_number: true, invert_match: false, only_matching: false},
-        counters: Counters { count: false, total_count: false }
-    };
-    assert_eq!(CluErrors::NotFoundError, grep.execute().expect_err(""));
-
-}
-
 #[test] // The errors are propagated from the single_file function, except the one creating the Regex. Let's test that one, a successful case without case insensitive flag set on and a successful case with the case insensitive flag set on.
 fn execute_multiple_files_grep_test(){
     let mut pathbuf = PathBuf::new();
@@ -247,72 +166,6 @@ fn context_lines_test(){
 }
 
 #[test]
-fn parse_path_test(){
-    // Well parsed test
-    let mut pathbuf = PathBuf::new();
-    pathbuf.push(".");
-    pathbuf.push("tests");
-    pathbuf.push("grep_files");
-    pathbuf.push("*");
-    // Without hidden items
-    let result_without_hidden = Grep::parse_path(&pathbuf.to_str().unwrap().to_string(), false, false).unwrap();
-    assert_eq!(1, result_without_hidden.len()); // It contains sample_text.txt
-
-    // With hidden items
-    let result_with_hidden = Grep::parse_path(&pathbuf.to_str().unwrap().to_string(), false, true).unwrap();
-    assert_eq!(3, result_with_hidden.len()); // It contains the same as the previous + .hidden_folder + .hidden_text.txt
-
-    // Invalid path due to invalid parent dir test
-    assert_eq!(CluErrors::InputError("The introduced path: '' isn't valid.".to_string()), Grep::parse_path(&"".to_string(),false,false).expect_err(""));
-
-    // Invalid regex in the search path
-    let mut pathbuf = PathBuf::new();
-    pathbuf.push(".");
-    pathbuf.push("[a-s+");
-    assert_eq!(CluErrors::RegexError("[a-s+".to_string()), Grep::parse_path(&pathbuf.to_str().unwrap().to_string(),false,false).expect_err(""));
-
-    // Invalid file name in the search path
-    let mut pathbuf = PathBuf::new();
-    pathbuf.push(".");
-    pathbuf.push("..");
-    assert_eq!(CluErrors::InputError(format!("The introduced path: '{}' isn't valid.", pathbuf.to_str().unwrap())), Grep::parse_path(&pathbuf.to_str().unwrap().to_string(), false, false).expect_err(""));
-
-    // Unable to read directory test. This happens if the user doesn't have permission to read the directory, or if it's introduced a regex that passes the filter but whose parent dir doesn't exist. We will use this second case to carry out the test
-    let mut pathbuf = PathBuf::new();
-    pathbuf.push(".");
-    pathbuf.push("sc");
-    pathbuf.push("*");
-    assert_eq!(CluErrors::UnableToReadDirectory, Grep::parse_path(&pathbuf.to_str().unwrap().to_string(), false, false).expect_err(""));
-
-}
-
-#[test]
-fn parse_path_recursively_test(){
-    // Base case test, the path only contains files
-    let mut pathbuf = PathBuf::new();
-    pathbuf.push(".");
-    pathbuf.push("tests");
-    pathbuf.push("grep_files");
-    pathbuf.push("sample_text.txt");
-    let query = Grep::parse_path_recursively(vec![pathbuf.to_str().unwrap().to_string()], false).unwrap();
-    assert_eq!(1, query.len()); 
-
-    // Recursive case test, finding all the files in the directory tree
-    let mut pathbuf = PathBuf::new();
-    pathbuf.push(".");
-    pathbuf.push("tests");
-    pathbuf.push("grep_files");
-    let without_hidden_files = Grep::parse_path_recursively(vec![pathbuf.to_str().unwrap().to_string()], false).unwrap();
-    let with_hidden_files = Grep::parse_path_recursively(vec![pathbuf.to_str().unwrap().to_string()], true).unwrap();
-    assert_eq!(1, without_hidden_files.len()); 
-    assert_eq!(3, with_hidden_files.len()); 
-
-    // The errors that may occur here are:
-    // - Errors propagated from parse_path (already tested).
-    // - Concurrency errors. There's no way to create a unit test of that as the concurrency is defined in the function so we cannot close the channel or panick a thread from here
-}
-
-#[test]
 fn output_search_lines_test(){
     assert_eq!("Hey".to_string(),Grep::output_search_lines(0, "Hey", false, false));
     assert_eq!("Hey".to_string(),Grep::output_search_lines(0, "Hey", true, false));
@@ -320,7 +173,7 @@ fn output_search_lines_test(){
     assert_eq!("1-Hey".to_string(),Grep::output_search_lines(0, "Hey", true, true));
 }
 
-#[test]
+#[test] // This test may be an integration test as it relies on the module base, however as it uses a private function we have to run it as an unit test
 fn validate_commands_test(){
     let no_options_no_counters = Grep{
         pattern: Box::new(String::new()),

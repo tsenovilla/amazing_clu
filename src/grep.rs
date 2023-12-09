@@ -1,13 +1,11 @@
 use clap::Args;
-use std::{fs, env};
 use regex::{Regex,RegexBuilder};
-use std::{slice, mem, collections::HashMap, path::{Path,PathBuf}, thread::Builder, sync::mpsc};
+use std::{fs,collections::HashMap, path::Path, thread::Builder, sync::mpsc};
 
 mod context;
 mod options;
 mod counters;
-use crate::clu_errors::CluErrors;
-use crate::grep::{context::Context, options::Options, counters::Counters};
+use crate::{base, clu_errors::CluErrors, grep::{context::Context, options::Options, counters::Counters}};
 
 #[derive(Args)]
 pub struct Grep{
@@ -54,11 +52,11 @@ impl Grep{
             std::mem::replace(&mut self.path, Vec::new()) // As self.path is not required to be part of self after assigning it here, we take it out and hold it in path, leaving an empty Vector in self. Then, the contents of path can be safely spawned among threads without having to export self with them.
         }
         else{
-            Self::parse_path(&self.path[0], false, self.hidden_items)? // If globbing hasn't taken place, we manually do it through the parse_path function
+            base::parse_path(&self.path[0], false, self.hidden_items)? // If globbing hasn't taken place, we manually do it through the parse_path function
         };
 
         if self.dereference_recursive{
-            path = Self::parse_path_recursively(path, self.hidden_items)?;
+            path = base::parse_path_recursively(path, self.hidden_items)?;
         }
 
         // Gets the request and converts it into a single String to be printed
@@ -301,105 +299,6 @@ impl Grep{
         context_lines
     }
 
-    // This function is used to parse a path into all the valid items. Eg: foo/txt will find all the items inside foo containing txt in its name
-    fn parse_path(path: &String, recursively_executed: bool, hidden_items: bool) -> Result<Vec<String>, CluErrors>{
-        let path_object = Path::new(path);
-        let current_dir = env::current_dir().map_err(|_err| CluErrors::UnableToReadDirectory)?; 
-        let parent = match path_object.parent(){ // Get the dir where we research if possible. If a path pattern to search in the current directory has been introduced (eg, *.txt), then we have to return the current directory.
-            Some(dir) => if dir.as_os_str().is_empty(){
-                current_dir.as_ref()
-            }
-            else{
-                dir
-            },
-            None => return Err(CluErrors::InputError(format!("The introduced path: '{}' isn't valid.", path)))
-        };
-        let reg = match path_object.file_name(){ // Get the regex use to search in parent
-            Some(pattern) => {
-                // If the pattern starts with *, in order to search everything in a dir (eg, foo/*) then we insert a "." before to use the global regex. Remember to take account of hidden items if necessary
-                let pattern = pattern.to_str()
-                    .map(|pattern| if pattern.starts_with("*"){
-                        if hidden_items{
-                            format!(".{}", pattern)
-                        }
-                        else {
-                            format!(r"^[^\.].{}",pattern)
-                        }
-                    }else{
-                        pattern.to_string()
-                    })
-                    .unwrap(); // Unwrap is OK as pattern comes from path which is already a valid String, then pattern.to_str cannot be None
-                Regex::new(&pattern)
-                    .map_err(|_err| CluErrors::RegexError(String::from(pattern)))?
-            },
-            None => return Err(CluErrors::InputError(format!("The introduced path: '{}' isn't valid.", path)))
-        };
-        
-        let parsed: Vec<String> = parent.read_dir().map_err(|_err|CluErrors::UnableToReadDirectory)?
-                .filter_map(|item| item.ok()) // If the item is not readable we ignore it
-                .filter_map(|item| item.file_name().into_string().ok()) // Again ignore if it's not readable
-                .filter(|item| reg.is_match(item))
-                .map(|item|{
-                    let mut pathbuf = PathBuf::from(parent);
-                    pathbuf.push(item);
-                    pathbuf.to_str().unwrap().to_string() // Unwrap is Ok as parent comes from path which is already a valid String
-                })
-                .collect();
-        if parsed.len() == 0 && !recursively_executed{ // If executed recursively, there's no problem if a directory is empty
-            return Err(CluErrors::InputError(format!("Reading an empty directory at: {}.", path)));
-        }
-        Ok(parsed)
-    }
-
-    // If dereference_recursive is set on, we have to find all the files matching the pattern, going down into the directory tree if needed
-    fn parse_path_recursively(path: Vec<String>, hidden_items: bool) -> Result<Vec<String>,CluErrors>{
-        if path.iter().all(|item| Path::new(item).is_file()){
-            return Ok(path); // Base case, everything is a file
-        }
-        // Find which elements are files and which ones are dirs
-        let mut files: Vec<String> = path
-            .iter()
-            .filter(|item| Path::new(item).is_file())
-            .map(|file| file.to_string())
-            .collect(); 
-        let dirs: Vec<String> = path
-            .iter()
-            .filter(|item| Path::new(item).is_dir())
-            .filter_map(|dir| {
-                let mut dir = PathBuf::from(dir);
-                dir.push("*"); // If we're going down in the directory tree, add a * to find everything inside this directory
-                match dir.to_str(){
-                    Some(dir) => Some(dir.to_string()),
-                    None => None // Non readable dirs are ignored
-                }
-            })
-            .collect();
-
-        let (tx, rx) = mpsc::channel();
-        let mut handles = Vec::new(); // Call this function recursively and concurrently in order to find all the files
-        for dir in dirs{
-            let tx1 = tx.clone();
-            handles.push(Builder::new().spawn(move || -> Result<(), CluErrors>{
-                let call = Self::parse_path_recursively(Self::parse_path(&dir, true, hidden_items)?, hidden_items)?;
-                tx1.send(call).map_err(|_err| CluErrors::UnexpectedError)?;
-                Ok(())
-            }).map_err(|_err| CluErrors::UnexpectedError)?);
-        }
-
-        for handle in handles{
-            handle.join().map_err(|_err| CluErrors::UnexpectedError)??; // We handle errors from the thread or from the join
-        }
-
-        loop{
-            match rx.try_recv(){
-                Ok(mut sent_output) => files.append(&mut sent_output),
-                Err(_) => break
-            }
-        }
-
-        Ok(files)
-    }
-
     // This function is called by search. It just produce a String containing its corresponding line_number if needed
     fn output_search_lines(line_number: usize, line: &str, is_context_line: bool, line_number_flag: bool) -> String{
         format!(
@@ -413,22 +312,12 @@ impl Grep{
     // This function is called by execute to determine if a command of the group Options has been used in combination with a command of the group Counters. Note that this only works because both are structs composed by bools, then it's enough to check its bytes.
     fn validate_commands(&self) -> bool{
         !(
-            get_bytes(&self.options).iter().any(|&x| x!=0) 
+            base::get_bytes(&self.options).iter().any(|&x| x!=0) 
             && 
-            get_bytes(&self.counters).iter().any(|&x| x!=0)
+            base::get_bytes(&self.counters).iter().any(|&x| x!=0)
         )
     }
 
-}
-
-fn get_bytes<T>(input: &T) -> &[u8] {
-    let size = mem::size_of::<T>();
-    unsafe {
-        slice::from_raw_parts(
-            input as *const T as *const u8,
-            size,
-        )
-    }
 }
 
 #[cfg(test)]

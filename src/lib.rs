@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 
 mod clu_errors;
 use clu_errors::CluErrors;
+mod base;
 mod grep;
 
 #[derive(Subcommand)]
