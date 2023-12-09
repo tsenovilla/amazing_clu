@@ -1,0 +1,2 @@
+I'm contained into a hidden folder.
+I'd like to test grep
