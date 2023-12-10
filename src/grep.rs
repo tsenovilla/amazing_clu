@@ -12,8 +12,8 @@ pub struct Grep{
     /// Specify the pattern to use in your search with this argument. If you use a regular expresion, wrap it with "".
     pattern: Box<String>,
 
-    /// Specify the path to the file where you want to perform the search. It must be a Vec<String> in order to accept automatically globbed paths (if globbing takes place due to the OS)
-    path: Vec<String>,
+    /// Specify the path to the file where you want to perform the search. 
+    path: Vec<String>, // It must be a Vec<String> in order to accept automatically globbed paths (if globbing takes place)
 
     /// Set this flag on if your path is a directory and you want to check within all the files inside the directory and its subdirectories
     #[arg(short = 'R', long)]
@@ -23,7 +23,7 @@ pub struct Grep{
     #[arg(short, long)]
     ignore_case: bool,
 
-    /// By default, grep ignores the hidden files and directories (those starting with .). Set this flag on to explicitly search inside of them. Note: If you're looking for hidden files with a determined extension, adding to the path *.txt -H may not be enough if your OS carries out globbing automatically. If that's the case, wrap the pattern into single quotes to ensure the globbing is carried out by the utility instead of by the OS
+    /// By default, grep ignores the hidden files and directories (those starting with .). Set this flag on to explicitly search inside of them. Note: If you're looking for hidden files with a determined extension, adding to the path *.txt -H may not be enough if your shell carries out globbing automatically. If that's the case, wrap the pattern into single quotes to ensure the globbing is carried out by the utility instead of by the shell.
     #[arg(short = 'H', long)]
     hidden_items:bool,
 

@@ -1,9 +1,10 @@
 use clap::{Parser, Subcommand};
 
 mod clu_errors;
-use clu_errors::CluErrors;
 mod base;
 mod grep;
+mod find;
+use clu_errors::CluErrors;
 
 #[derive(Subcommand)]
 enum Utility{
@@ -11,14 +12,14 @@ enum Utility{
     Grep(grep::Grep),
     
     /// Find:
-    Find
+    Find(find::Find)
 }
 
 impl Utility{
     fn execute(self) -> Result<String,CluErrors>{
         match self{
             Self::Grep(grep) => grep.execute(),
-            _=> Ok(String::new())
+            Self::Find(find)=> find.execute()
         }
     }
 }

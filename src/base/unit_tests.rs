@@ -26,26 +26,26 @@ fn parse_path_test(){
     assert_eq!(3, result_with_hidden.len()); // It contains the same as the previous + .hidden_folder + .hidden_text.txt
 
     // Invalid path due to invalid parent dir test
-    assert_eq!(CluErrors::InputError("The introduced path: '' isn't valid.".to_string()), base::parse_path(&"".to_string(),false,false).expect_err(""));
+    assert_eq!(CluErrors::InputError("The introduced path: '' isn't valid.".to_string()), base::parse_path(&"".to_string(),false,false).unwrap_err());
 
     // Invalid regex in the search path
     let mut pathbuf = PathBuf::new();
     pathbuf.push(".");
     pathbuf.push("[a-s+");
-    assert_eq!(CluErrors::RegexError("[a-s+".to_string()), base::parse_path(&pathbuf.to_str().unwrap().to_string(),false,false).expect_err(""));
+    assert_eq!(CluErrors::RegexError("[a-s+".to_string()), base::parse_path(&pathbuf.to_str().unwrap().to_string(),false,false).unwrap_err());
 
     // Invalid file name in the search path
     let mut pathbuf = PathBuf::new();
     pathbuf.push(".");
     pathbuf.push("..");
-    assert_eq!(CluErrors::InputError(format!("The introduced path: '{}' isn't valid.", pathbuf.to_str().unwrap())), base::parse_path(&pathbuf.to_str().unwrap().to_string(), false, false).expect_err(""));
+    assert_eq!(CluErrors::InputError(format!("The introduced path: '{}' isn't valid.", pathbuf.to_str().unwrap())), base::parse_path(&pathbuf.to_str().unwrap().to_string(), false, false).unwrap_err());
 
     // Unable to read directory test. This happens if the user doesn't have permission to read the directory, or if it's introduced a regex that passes the filter but whose parent dir doesn't exist. We will use this second case to carry out the test
     let mut pathbuf = PathBuf::new();
     pathbuf.push(".");
     pathbuf.push("sc");
     pathbuf.push("*");
-    assert_eq!(CluErrors::UnableToReadDirectory, base::parse_path(&pathbuf.to_str().unwrap().to_string(), false, false).expect_err(""));
+    assert_eq!(CluErrors::UnableToReadDirectory, base::parse_path(&pathbuf.to_str().unwrap().to_string(), false, false).unwrap_err());
 
 }
 

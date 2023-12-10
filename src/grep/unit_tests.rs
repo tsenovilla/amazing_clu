@@ -24,7 +24,7 @@ fn execute_multiple_files_grep_test(){
         counters: Counters { count: true, total_count: false }
     };
 
-    assert_eq!(CluErrors::RegexError(grep.pattern.to_string()), grep.execute_multiple_files_grep(vec![pathbuf.to_str().unwrap().to_string(), pathbuf2.to_str().unwrap().to_string()]).expect_err(""));
+    assert_eq!(CluErrors::RegexError(grep.pattern.to_string()), grep.execute_multiple_files_grep(vec![pathbuf.to_str().unwrap().to_string(), pathbuf2.to_str().unwrap().to_string()]).unwrap_err());
 
     // No case insensitive succeed
     let grep = Grep{
@@ -66,14 +66,14 @@ fn execute_single_file_grep_test(){
     let mut pathbuf = PathBuf::new();
     pathbuf.push(".");
     pathbuf.push("tests");
-    assert_eq!(CluErrors::InputError(format!("{} is dir. If you want to use grep recursively in a directory, add the -R flag. For more information try --help",pathbuf.to_str().unwrap().to_string())), Grep::execute_single_file_grep(reg.clone(), &pathbuf.to_str().unwrap().to_string(),0,0,0,false,false,false,false,false,false).expect_err(""));
+    assert_eq!(CluErrors::InputError(format!("{} is dir. If you want to use grep recursively in a directory, add the -R flag. For more information try --help",pathbuf.to_str().unwrap().to_string())), Grep::execute_single_file_grep(reg.clone(), &pathbuf.to_str().unwrap().to_string(),0,0,0,false,false,false,false,false,false).unwrap_err());
 
     // Trying to read something unexistent
     let mut pathbuf = PathBuf::new();
     pathbuf.push(".");
     pathbuf.push("tests");
     pathbuf.push("text.txt");
-    assert_eq!(CluErrors::InputError(format!("{} cannot be read",pathbuf.to_str().unwrap().to_string())), Grep::execute_single_file_grep(reg.clone(), &pathbuf.to_str().unwrap().to_string(),0,0,0,false,false,false,false,false,false).expect_err(""));
+    assert_eq!(CluErrors::InputError(format!("{} cannot be read",pathbuf.to_str().unwrap().to_string())), Grep::execute_single_file_grep(reg.clone(), &pathbuf.to_str().unwrap().to_string(),0,0,0,false,false,false,false,false,false).unwrap_err());
 
     // Successful call
     let mut pathbuf = PathBuf::new();
