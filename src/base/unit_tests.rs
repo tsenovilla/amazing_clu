@@ -57,7 +57,7 @@ fn parse_path_recursively_test(){
     pathbuf.push("tests");
     pathbuf.push("base_files");
     pathbuf.push("sample_text.txt");
-    let query = base::parse_path_recursively(vec![pathbuf.to_str().unwrap().to_string()], false).unwrap();
+    let query = base::parse_path_recursively(&vec![pathbuf.to_str().unwrap().to_string()], false).unwrap();
     assert_eq!(1, query.len()); 
 
     // Recursive case test, finding all the files in the directory tree
@@ -65,8 +65,8 @@ fn parse_path_recursively_test(){
     pathbuf.push(".");
     pathbuf.push("tests");
     pathbuf.push("base_files");
-    let without_hidden_files = base::parse_path_recursively(vec![pathbuf.to_str().unwrap().to_string()], false).unwrap();
-    let with_hidden_files = base::parse_path_recursively(vec![pathbuf.to_str().unwrap().to_string()], true).unwrap();
+    let without_hidden_files = base::parse_path_recursively(&vec![pathbuf.to_str().unwrap().to_string()], false).unwrap();
+    let with_hidden_files = base::parse_path_recursively(&vec![pathbuf.to_str().unwrap().to_string()], true).unwrap();
     assert_eq!(1, without_hidden_files.len()); 
     assert_eq!(3, with_hidden_files.len()); 
 

@@ -8,9 +8,10 @@ use crate::{base, clu_errors::CluErrors, find::options::Options};
 pub struct Find{
     
     /// Specify the directory where you want to start searching from
-    from:Box<String>,
+    from:Vec<String>,
 
     /// Specify what you're looking for using a Regex. If empty, find we'll look for all the files in the directory tree. Note: It's better to wrap this argument with quotes, otherwise your shell may reject it. Example: If you write *.txt, your shell may try to find something called *.txt in your current directory and reject the expression directly, then it's better to use find . '*.txt'
+    #[arg(short, long)]
     expression: Option<Box<String>>, //It must be a Vec<String> in order to accept automatically globbed paths (if globbing takes place)
 
     /// Set this flag on to make the search expression case insensitive.
@@ -29,7 +30,7 @@ impl Find{
 
     pub fn execute(self) -> Result<String, CluErrors>{        
         // Find the requested files
-        let parsed = base::parse_path_recursively(vec![self.from.to_string()], self.hidden_items)?;
+        let parsed = base::parse_path_recursively(&self.from, self.hidden_items)?;
 
         let filter = self.filter_by_name(parsed)?;
 

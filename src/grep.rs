@@ -56,7 +56,7 @@ impl Grep{
         };
 
         if self.dereference_recursive{
-            path = base::parse_path_recursively(path, self.hidden_items)?;
+            path = base::parse_path_recursively(&path, self.hidden_items)?;
         }
 
         // Gets the request and converts it into a single String to be printed

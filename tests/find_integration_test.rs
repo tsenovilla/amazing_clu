@@ -47,7 +47,7 @@ fn find_execute_test(){
 
     // Find only the HTML files
     let mut cmd = Command::new(binary.clone());
-    cmd.arg("find").arg(from.to_str().unwrap()).arg("*.html");
+    cmd.arg("find").arg(from.to_str().unwrap()).arg("-e").arg("*.html");
     cmd.assert().success(); // Ensure the execution succeeded.
     unsafe {stdout = String::from_utf8_unchecked(cmd.assert().get_output().to_owned().stdout);}
     // Found the HTML
@@ -62,9 +62,20 @@ fn find_execute_test(){
 
     // Empty research
     let mut cmd = Command::new(binary.clone());
-    cmd.arg("find").arg(from.to_str().unwrap()).arg("*.js"); 
+    cmd.arg("find").arg(from.to_str().unwrap()).arg("-e").arg("*.js"); 
     cmd.assert().success();
     cmd.assert().stdout("The request didn't produce any output.\n");
 
+    // Research in several directories 
+    let mut from2 = PathBuf::new();
+    from2.push(".");
+    from2.push("tests");
+    from2.push("base_files");
+    let mut cmd = Command::new(binary.clone());
+    cmd.arg("find").arg(from.to_str().unwrap()).arg(from2.to_str().unwrap());
+    cmd.assert().success();
+    unsafe {stdout = String::from_utf8_unchecked(cmd.assert().get_output().to_owned().stdout);}
+    assert!(stdout.contains("found_file1.txt")); // This is inside tests/find_files
+    assert!(stdout.contains("sample_text.txt")); // This is inside tests/base_files
 
 }

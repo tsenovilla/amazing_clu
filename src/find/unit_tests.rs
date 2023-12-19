@@ -7,7 +7,7 @@ fn filter_by_name_test(){
 
     // Find a concrete file
     let find = Find{
-        from: Box::new("".to_string()), // Not important for this test
+        from: vec!["".to_string()], // Not important for this test
         expression: Some(Box::new("sample.rs".to_string())),
         ignore_case: false,
         hidden_items: false,  // Not important for this test
@@ -17,7 +17,7 @@ fn filter_by_name_test(){
 
     // Find files using a pattern
     let find = Find{
-        from: Box::new("".to_string()), // Not important for this test
+        from: vec!["".to_string()], // Not important for this test
         expression: Some(Box::new("*.txt".to_string())),
         ignore_case: false,
         hidden_items: false,  // Not important for this test
@@ -27,7 +27,7 @@ fn filter_by_name_test(){
 
     // Find everything if no pattern specified
     let find = Find{
-        from: Box::new("".to_string()), // Not important for this test
+        from: vec!["".to_string()], // Not important for this test
         expression: None,
         ignore_case: false,
         hidden_items: false,  // Not important for this test
@@ -37,7 +37,7 @@ fn filter_by_name_test(){
 
     // Regex error
     let find = Find{
-        from: Box::new("".to_string()), // Not important for this test
+        from: vec!["".to_string()], // Not important for this test
         expression: Some(Box::new("[a-z".to_string())),
         ignore_case: false,
         hidden_items: false,  // Not important for this test

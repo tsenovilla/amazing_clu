@@ -63,9 +63,9 @@ pub fn parse_path(path: &String, recursively_executed: bool, hidden_items: bool)
 }
 
 // Parse path recursively down in the directories tree.
-pub fn parse_path_recursively(path: Vec<String>, hidden_items: bool) -> Result<Vec<String>,CluErrors>{
+pub fn parse_path_recursively(path: &Vec<String>, hidden_items: bool) -> Result<Vec<String>,CluErrors>{
     if path.iter().all(|item| Path::new(item).is_file()){
-        return Ok(path); // Base case, everything is a file
+        return Ok(path.clone()); // Base case, everything is a file
     }
     // Find which elements are files and which ones are dirs
     let mut files: Vec<String> = path
@@ -91,7 +91,7 @@ pub fn parse_path_recursively(path: Vec<String>, hidden_items: bool) -> Result<V
     for dir in dirs{
         let tx1 = tx.clone();
         handles.push(Builder::new().spawn(move || -> Result<(), CluErrors>{
-            let call = parse_path_recursively(parse_path(&dir, true, hidden_items)?, hidden_items)?;
+            let call = parse_path_recursively(&parse_path(&dir, true, hidden_items)?, hidden_items)?;
             tx1.send(call).map_err(|_err| CluErrors::UnexpectedError)?;
             Ok(())
         }).map_err(|_err| CluErrors::UnexpectedError)?);
